@@ -3,18 +3,15 @@ version: "0.1"
 runson: linux
 autosplit: true
 
-concurrency: 1
+concurrency: 30
 maxRetries: 1
-testSuiteTimeout: 300
+testSuiteTimeout: 480
+globalTimeout: 480
 
 env:
   TARGET_OS: LINUX
   GOCACHE: /home/ltuser/foreman/terraform-provider-aws/cache
-#  PAT: ${{ .secrets.testKey }}
-
 pre:
-  # - go get github.com/jstemmer/go-junit-report/v2@latest
-  - go version
   - go env GOCACHE
   - git apply ./etc/patch/0001-endpoint.patch
   - go mod tidy
@@ -23,21 +20,20 @@ pre:
   - sleep 20
   - docker ps -a
   - curl http://localhost:4566/health
-  - go test -c #./internal/service/s3 #-o test.bin
-  # - chmod +x test.bin
+  - go test -c
 cacheDirectories:
   - cache
 
-cacheKey: '{{ checksum "go.sum" }}'
+cacheKey: '{{ checksum "go.mod" }}'
 
 testDiscovery:
   type: raw
   mode: dynamic
-  # command: grep  -nr 'func TestAcc' internal |  sed 's/.*:func //' | sed 's/(.*//' | head
-  command: grep  -nr 'func TestAccS3BucketObject' ./internal/service/s3 |  sed 's/.*:func //' | sed 's/(.*//' | head
+  command: grep  -nr 'func TestAcc' ./internal/service/$service |  sed 's/.*:func //' | sed 's/(.*//'
+  # command: grep  -nr 'func TestAccS3BucketObject' ./internal/service/s3 |  sed 's/.*:func //' | sed 's/(.*//' | head
 
 # testRunnerCommand: go test -v -timeout 30s -run ^$test$ github.com/hashicorp/terraform-provider-aws/internal/service/s3
-testRunnerCommand: TF_ACC=1 AWS_ACCESS_KEY_ID=test AWS_SECRET_ACCESS_KEY=test AWS_DEFAULT_REGION=us-west-1 AWS_ALTERNATE_ACCESS_KEY_ID=test AWS_ALTERNATE_SECRET_ACCESS_KEY=test AWS_ALTERNATE_SECRET_ACCESS_KEY=test AWS_ALTERNATE_REGION=us-east-2 AWS_THIRD_REGION=eu-west-1 go test -v -timeout 30s -run ^$test$ ./internal/service/s3
+testRunnerCommand: TF_ACC=1 AWS_ACCESS_KEY_ID=test AWS_SECRET_ACCESS_KEY=test AWS_DEFAULT_REGION=us-west-1 AWS_ALTERNATE_ACCESS_KEY_ID=test AWS_ALTERNATE_SECRET_ACCESS_KEY=test AWS_ALTERNATE_SECRET_ACCESS_KEY=test AWS_ALTERNATE_REGION=us-east-2 AWS_THIRD_REGION=eu-west-1 go test -v -timeout 30s -run ^$test$ ./$(grep  -nr 'func $test' internal | sed 's:/[^/]*$::')
 # testRunnerCommand: ./test.bin -test.v -test.parallel=1 -test.count=1 -test.timeout=60m -test.run=^$test$
 sourcePayload:
   platform: git
