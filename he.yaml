@@ -1,8 +1,7 @@
----
 version: "0.1"
-runson: linux
+runson: ${matrix.os}
 autosplit: true
-
+parallelism: 1
 concurrency: 30
 maxRetries: 1
 testSuiteTimeout: 480
@@ -16,7 +15,7 @@ pre:
   - git apply ./etc/patch/0001-endpoint.patch
   - go mod tidy
   - go mod download
-  - docker compose up -d
+  - LOCALSTACK_API_KEY=${{ .secrets.LOCALSTACK_API_KEY }} docker compose up -d
   - sleep 20
   - docker ps -a
   - curl http://localhost:4566/health
@@ -25,11 +24,14 @@ cacheDirectories:
   - cache
 
 cacheKey: '{{ checksum "go.mod" }}'
-
+matrix:
+  service: ['events', 'sts', 'appautoscaling', 'organizations', 'docdb', 'secretsmanager', 'kafka', 'lakeformation', 'iot', 'rds', 'elasticsearch', 'autoscaling', 'backup', 'glue', 'qldb', 'ecr', 'efs', 'cloudtrail', 'ssm', 'redshift', 'route53resolver', 'sns', 'logs', 'ses', 'ecs', 'emr', 'elasticbeanstalk', 'opensearch', 's3control', 'amplify', 'appsync', 'elasticache', 'eks', 'elbv2', 'iotanalytics', 'swf', 'athena', 'elb', 'glacier', 'sqs', 'acm', 'cloudformation', 'ec2', 'serverlessrepo', 'kinesis', 'cognitoidp', 'mediastore', 'route53', 'cloudfront', 'codecommit', 'mwaa', 'resourcegroups', 'batch', 'sagemaker', 'dynamodb', 'kinesisanalytics', 'cognitoidentity', 'firehose', 'mq', 'configservice', 'apigateway', 'resourcegroupstaggingapi', 'transcribe', 'neptune', 'cloudwatch', 'apigatewayv2', 'lambda', 'iam', 'fis', 'appconfig', 'kms', 's3']
+  os: ["linux"]
+  
 testDiscovery:
   type: raw
   mode: dynamic
-  command: grep  -nr 'func TestAcc' ./internal/service/$service |  sed 's/.*:func //' | sed 's/(.*//'
+  command: grep  -nr 'func TestAcc' ./internal/service/${service} |  sed 's/.*:func //' | sed 's/(.*//'
   # command: grep  -nr 'func TestAccS3BucketObject' ./internal/service/s3 |  sed 's/.*:func //' | sed 's/(.*//' | head
 
 # testRunnerCommand: go test -v -timeout 30s -run ^$test$ github.com/hashicorp/terraform-provider-aws/internal/service/s3
